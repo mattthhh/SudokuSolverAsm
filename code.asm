@@ -85,24 +85,52 @@ next_next:
 	mov [rbp+32], rcx
 	jmp main_loop
 
+goback:
+	pop rax
+	pop rbx
+	mov [rbp+16], rax
+	mov [rbp+24], rbx
+	mov rdx, (buffer)
+	imul rax, 2
+	add rdx, rax
+	imul rbx, 9
+	imul rbx, 2
+	add rdx, rbx
+	movzx rcx, byte [rdx]
+	sub rcx, '0'
+	mov rax, 0
+	add rax, '0'
+	mov [rdx], al
+	mov rax, [rbp+16]
+	mov rbx, [rbp+24]
+	jmp try_values_loop
+	
+
 try_values:
 	; try values from 1 to 9
 	mov rcx, 0
 try_values_loop:
 	add rcx, 1
 	cmp rcx, 10
-	je next ; TODO : backtracking
+	je goback ; TODO : backtracking
 	push rbx
 	push rax
 	push rcx
 	call check_line
+	cmp rax, 1
+	je try_values_continue
+	pop rcx
+	pop rax
+	pop rbx
+	jmp try_values_loop
+try_values_continue:
+	call check_column
 	cmp rax, 1
 	je try_values_success
 	pop rcx
 	pop rax
 	pop rbx
 	jmp try_values_loop
-
 
 try_values_success:
 	mov rcx, [rsp]
@@ -119,6 +147,8 @@ try_values_success:
 	pop rcx
 	pop rax
 	pop rbx
+	push rbx
+	push rax
 	jmp next
 
 check_line:
@@ -128,7 +158,7 @@ check_line:
 	mov rax, 0
 check_line_loop:
 	cmp rax, 18
-	je check_line_success
+	je success
 	mov rcx, [rbp+16]	; value to try
 	mov rbx, [rbp+32]	; y
 	mov rdx, (buffer)
@@ -139,15 +169,39 @@ check_line_loop:
 	movzx rdx, byte [rdx]
 	sub rdx, '0'
 	cmp rdx, rcx
-	je check_line_fail
+	je fail
 	add rax, 2
 	jmp check_line_loop
 
-check_line_success:
+check_column:
+	push rbp
+	mov rbp, rsp
+	; for y 0 to 8 in column x
+	mov rbx, 0
+check_column_loop:
+	cmp rbx, 9
+	je success
+	mov rcx, [rbp+16]	; value to try
+	mov rax, [rbp+24]	; x
+	mov rdx, (buffer)
+	imul rax, 2
+	add rdx, rax
+	mov rax, rbx
+	imul rax, 9
+	imul rax, 2
+	add rdx, rax
+	movzx rdx, byte [rdx]
+	sub rdx, '0'
+	cmp rdx, rcx
+	je fail
+	add rbx, 1
+	jmp check_column_loop
+
+success:
 	mov rax, 1
 	jmp finish
 
-check_line_fail:
+fail:
 	mov rax, 0
 	jmp finish
 
